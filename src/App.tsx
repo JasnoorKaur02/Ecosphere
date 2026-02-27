@@ -92,19 +92,84 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const lines = text.split('\n');
-      const headers = lines[0].split(',');
-      
-      const parsedData: BuildingData[] = lines.slice(1).filter(line => line.trim()).map(line => {
+      if (!text) return;
+
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length < 2) return;
+
+      const rawHeaders = lines[0].split(',');
+
+      const headerMap: Record<string, keyof BuildingData> = {
+        // time / date columns
+        'date': 'timestamp',
+        'timestamp': 'timestamp',
+        'time': 'timestamp',
+
+        // occupancy
+        'occupancy': 'occupancy',
+        'occupanc': 'occupancy',
+
+        // energy
+        'energy': 'energy',
+        'energy_kv': 'energy',
+        'energy_kwh': 'energy',
+
+        // water
+        'water': 'water',
+        'water_lit': 'water',
+        'water_l': 'water',
+
+        // waste
+        'waste': 'waste',
+        'waste_kg': 'waste',
+
+        // carbon / emissions (if present)
+        'carbon': 'carbon',
+        'co2': 'carbon',
+        'estimated_': 'carbon',
+      };
+
+      const normaliseHeader = (header: string) =>
+        header
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '');
+
+      const headers = rawHeaders.map(normaliseHeader);
+
+      const parsedData: BuildingData[] = lines.slice(1).map((line) => {
         const values = line.split(',');
-        const entry: any = {};
+        const entry: Partial<BuildingData> = {};
+
         headers.forEach((header, index) => {
-          const key = header.trim().toLowerCase();
-          const val = values[index]?.trim();
-          entry[key] = isNaN(Number(val)) ? val : Number(val);
+          const mappedKey = headerMap[header];
+          if (!mappedKey) return;
+
+          const rawVal = values[index]?.trim();
+          if (!rawVal) return;
+
+          const numericVal = Number(rawVal);
+          (entry as any)[mappedKey] = isNaN(numericVal) ? rawVal : numericVal;
         });
+
+        if (!entry.timestamp) {
+          entry.timestamp = new Date().toISOString();
+        }
+
+        if (typeof entry.carbon !== 'number' && typeof entry.energy === 'number') {
+          entry.carbon = Math.round(entry.energy * 0.7);
+        }
+
+        if (typeof entry.temperature !== 'number') {
+          entry.temperature = 22;
+        }
+
+        if (typeof entry.occupancy !== 'number') {
+          entry.occupancy = 0;
+        }
+
         return entry as BuildingData;
-      });
+      }).filter((row) => row && typeof row.energy !== 'undefined');
 
       if (parsedData.length > 0) {
         setData(parsedData);
