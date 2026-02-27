@@ -42,3 +42,15 @@
 .animate-pulse-glow {
   animation: pulse-glow 4s infinite ease-in-out;
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-emerald-500/20 transition-colors;
+}

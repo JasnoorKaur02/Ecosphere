@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Leaf, 
@@ -27,6 +27,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
   const [showModal, setShowModal] = useState(false);
   const [institutionName, setInstitutionName] = useState('');
   const [selectedType, setSelectedType] = useState<BuildingType>('Campus');
+
+  useEffect(() => {
+    if (showModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal]);
 
   const features = [
     { title: 'Energy Prediction', icon: Zap, desc: 'Neural forecasting of energy demand and peak load shifting.', color: 'text-lime-400', border: 'hover:border-lime-500/30' },
@@ -265,7 +276,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
       {/* Entry Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 md:p-12">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -278,41 +289,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-xl glass rounded-[4rem] p-16 space-y-12 shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/10"
+              className="relative w-full max-w-[600px] max-h-[85vh] overflow-y-auto glass rounded-[3rem] md:rounded-[4rem] p-8 md:p-9 space-y-5 md:space-y-6 shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/10 custom-scrollbar"
             >
               <button 
                 onClick={() => setShowModal(false)}
-                className="absolute top-10 right-10 w-12 h-12 rounded-full bg-white/[0.02] border border-white/[0.05] flex items-center justify-center text-white/20 hover:text-white hover:bg-white/[0.05] transition-all"
+                className="absolute top-7 right-7 w-9 h-9 rounded-full bg-white/[0.02] border border-white/[0.05] flex items-center justify-center text-white/20 hover:text-white hover:bg-white/[0.05] transition-all"
               >
-                <X size={20} />
+                <X size={16} />
               </button>
 
-              <div className="space-y-4">
-                <h3 className="text-4xl font-display font-bold tracking-tight text-white">Launch Dashboard</h3>
+              <div className="space-y-2">
+                <h3 className="text-2xl md:text-3xl font-display font-bold tracking-tight text-white">Launch Dashboard</h3>
                 <p className="text-white/30 text-sm leading-relaxed">Configure your facility context to initialize the neural sustainability engine.</p>
               </div>
 
-              <div className="space-y-8">
-                <div className="space-y-3">
+              <div className="space-y-5">
+                <div className="space-y-2">
                   <label className="text-[10px] font-mono font-black text-white/20 uppercase tracking-[0.3em] ml-2">Institution Name</label>
                   <input 
                     type="text" 
                     value={institutionName}
                     onChange={(e) => setInstitutionName(e.target.value)}
                     placeholder="e.g. Stanford Medical Center"
-                    className="w-full bg-white/[0.02] border border-white/[0.05] rounded-2xl px-8 py-5 text-white placeholder:text-white/10 focus:outline-none focus:border-emerald-500/50 focus:bg-white/[0.04] transition-all"
+                    className="w-full bg-white/[0.02] border border-white/[0.05] rounded-2xl px-6 py-3.5 text-white placeholder:text-white/10 focus:outline-none focus:border-emerald-500/50 focus:bg-white/[0.04] transition-all"
                   />
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-[10px] font-mono font-black text-white/20 uppercase tracking-[0.3em] ml-2">Building Type</label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     {(['Campus', 'Office', 'Residential', 'Hospital'] as BuildingType[]).map((type) => (
                       <button
                         key={type}
                         onClick={() => setSelectedType(type)}
                         className={cn(
-                          "px-6 py-4 rounded-2xl text-[10px] font-mono font-bold uppercase tracking-widest border transition-all duration-500",
+                          "px-6 py-2.5 rounded-2xl text-[10px] font-mono font-bold uppercase tracking-widest border transition-all duration-500",
                           selectedType === type
                           ? "bg-emerald-500 text-black border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                           : "bg-white/[0.02] border-white/[0.05] text-white/30 hover:bg-white/[0.05] hover:text-white/60"
@@ -325,17 +336,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 pt-4">
+              <div className="flex flex-col gap-1 pt-2">
                 <button
                   onClick={() => onLaunch(institutionName, selectedType)}
                   disabled={!institutionName.trim()}
-                  className="w-full py-6 bg-emerald-500 text-black font-mono font-black text-xs uppercase tracking-[0.4em] rounded-2xl shadow-[0_0_40px_rgba(16,185,129,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 disabled:opacity-20 disabled:hover:scale-100"
+                  className="w-full py-3.5 bg-emerald-500 text-black font-mono font-black text-xs uppercase tracking-[0.4em] rounded-2xl shadow-[0_0_40px_rgba(16,185,129,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 disabled:opacity-20 disabled:hover:scale-100"
                 >
                   Launch Dashboard
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="w-full py-6 text-white/20 font-mono font-black text-[10px] uppercase tracking-[0.4em] hover:text-white transition-colors"
+                  className="w-full py-2 text-white/20 font-mono font-black text-[10px] uppercase tracking-[0.4em] hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
