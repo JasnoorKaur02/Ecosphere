@@ -10,8 +10,12 @@
 
 @layer base {
   body {
-    @apply bg-[#030303] text-white antialiased selection:bg-emerald-500/30;
+    @apply bg-[#020d0a] text-white antialiased selection:bg-emerald-500/30;
   }
+}
+
+.bg-eco-gradient {
+  background: radial-gradient(circle at 50% -20%, #064e3b 0%, #020d0a 100%);
 }
 
 .glass {
