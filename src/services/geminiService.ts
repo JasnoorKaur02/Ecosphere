@@ -1,9 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 import { BuildingData, BuildingType } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAiInstance() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY is not defined. AI features will be disabled.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey: apiKey || 'dummy-key' });
+  }
+  return aiInstance;
+}
 
 export async function getSustainabilityInsights(data: BuildingData[], type: BuildingType, activeMetric: string = 'energy') {
+  const ai = getAiInstance();
   const recentData = data.slice(-24);
   const avgEnergy = recentData.reduce((acc, d) => acc + d.energy, 0) / 24;
   const peakEnergy = Math.max(...recentData.map(d => d.energy));
