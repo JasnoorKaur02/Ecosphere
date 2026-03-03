@@ -21,9 +21,10 @@ import { cn } from '../lib/utils';
 
 interface LandingPageProps {
   onLaunch: (institutionName: string, buildingType: BuildingType) => void;
+  onLogin: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch, onLogin }) => {
   const [showModal, setShowModal] = useState(false);
   const [institutionName, setInstitutionName] = useState('');
   const [selectedType, setSelectedType] = useState<BuildingType>('Campus');
@@ -95,7 +96,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
       </div>
 
       {/* Hero Section */}
-      <header className="relative z-10 max-w-7xl mx-auto px-8 pt-24 pb-24 text-center">
+      <nav className="relative z-20 max-w-7xl mx-auto px-8 py-8 flex justify-between items-center">
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <Leaf className="text-emerald-500 group-hover:scale-110 transition-transform duration-500" size={24} />
+          <span className="text-xl font-display font-bold tracking-tighter">ECOSPHERE AI</span>
+        </div>
+        <button 
+          onClick={onLogin}
+          className="px-6 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-[10px] font-mono font-bold uppercase tracking-[0.2em] hover:bg-white/[0.08] hover:border-emerald-500/30 transition-all duration-500"
+        >
+          Login / Sign Up
+        </button>
+      </nav>
+
+      <header className="relative z-10 max-w-7xl mx-auto px-8 pt-12 pb-24 text-center">
         {/* Radial Glow behind Heading */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-emerald-500/[0.07] blur-[120px] rounded-full pointer-events-none select-none" />
         
@@ -123,15 +137,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
             estimates carbon emissions, analyzes water consumption, and optimizes waste efficiency.
           </p>
 
-          <div className="pt-6">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={() => setShowModal(true)}
-              className="group relative px-10 py-5 bg-gradient-to-br from-emerald-500 to-teal-600 text-black font-mono font-black text-[10px] uppercase tracking-[0.4em] rounded-xl shadow-[0_10px_40px_rgba(16,185,129,0.2)] hover:shadow-[0_15px_50px_rgba(16,185,129,0.4)] hover:scale-105 transition-all duration-500 overflow-hidden"
+              className="group relative px-10 py-5 bg-gradient-to-br from-emerald-500 to-teal-600 text-black font-mono font-black text-[10px] uppercase tracking-[0.4em] rounded-xl shadow-[0_10px_40px_rgba(16,185,129,0.2)] hover:shadow-[0_15px_50px_rgba(16,185,129,0.4)] hover:scale-105 transition-all duration-500 overflow-hidden w-full sm:w-auto"
             >
-              <span className="relative z-10 flex items-center gap-4">
+              <span className="relative z-10 flex items-center justify-center gap-4">
                 Enter Platform <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </span>
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            </button>
+            <button
+              onClick={onLogin}
+              className="px-10 py-5 bg-white/[0.03] border border-white/[0.08] text-white/60 font-mono font-black text-[10px] uppercase tracking-[0.4em] rounded-xl hover:bg-white/[0.08] hover:text-white hover:border-emerald-500/30 transition-all duration-500 w-full sm:w-auto"
+            >
+              Sign Up / Login
             </button>
           </div>
         </motion.div>
@@ -344,12 +364,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
                 >
                   Launch Dashboard
                 </button>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="w-full py-2 text-white/20 font-mono font-black text-[10px] uppercase tracking-[0.4em] hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
+                <div className="flex items-center justify-center gap-4 mt-2">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="py-2 text-white/20 font-mono font-black text-[9px] uppercase tracking-[0.4em] hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <span className="text-white/5 font-mono text-[9px]">•</span>
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      onLogin();
+                    }}
+                    className="py-2 text-emerald-500/40 font-mono font-black text-[9px] uppercase tracking-[0.4em] hover:text-emerald-400 transition-colors"
+                  >
+                    Already have an account? Login
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

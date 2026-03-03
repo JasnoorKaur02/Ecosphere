@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AuthPage } from './components/AuthPage';
 import { 
   Zap, 
   Droplets, 
@@ -13,7 +14,11 @@ import {
   Sparkles,
   AlertCircle,
   FileUp,
-  FileDown
+  FileDown,
+  LogOut,
+  LogIn,
+  History,
+  Shield
 } from 'lucide-react';
 import { MetricCard } from './components/MetricCard';
 import { SustainabilityScore } from './components/SustainabilityScore';
@@ -26,7 +31,11 @@ import { cn } from './lib/utils';
 import { LandingPage } from './components/LandingPage';
 
 export default function App() {
-  const [view, setView] = useState<'landing' | 'dashboard'>('landing');
+  const [view, setView] = useState<'landing' | 'dashboard' | 'auth'>('landing');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('ecosphere_session') === 'active';
+  });
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [institutionName, setInstitutionName] = useState('');
   const [buildingType, setBuildingType] = useState<BuildingType>('Campus');
   const [data, setData] = useState<BuildingData[]>([]);
@@ -92,84 +101,48 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      if (!text) return;
-
-      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+      const lines = text.split('\n');
       if (lines.length < 2) return;
 
-      const rawHeaders = lines[0].split(',');
-
-      const headerMap: Record<string, keyof BuildingData> = {
-        // time / date columns
-        'date': 'timestamp',
-        'timestamp': 'timestamp',
-        'time': 'timestamp',
-
-        // occupancy
-        'occupancy': 'occupancy',
-        'occupanc': 'occupancy',
-
-        // energy
-        'energy': 'energy',
-        'energy_kv': 'energy',
-        'energy_kwh': 'energy',
-
-        // water
-        'water': 'water',
-        'water_lit': 'water',
-        'water_l': 'water',
-
-        // waste
-        'waste': 'waste',
-        'waste_kg': 'waste',
-
-        // carbon / emissions (if present)
-        'carbon': 'carbon',
-        'co2': 'carbon',
-        'estimated_': 'carbon',
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      
+      // Map headers to BuildingData keys
+      const keyMap: Record<string, string> = {
+        'timestamp': 'timestamp', 'date': 'timestamp', 'time': 'timestamp',
+        'energy': 'energy', 'kwh': 'energy', 'consumption': 'energy',
+        'water': 'water', 'liters': 'water', 'usage': 'water',
+        'waste': 'waste', 'kg': 'waste', 'generation': 'waste',
+        'carbon': 'carbon', 'co2': 'carbon', 'footprint': 'carbon',
+        'occupancy': 'occupancy', 'rate': 'occupancy',
+        'temperature': 'temperature', 'temp': 'temperature', 'celsius': 'temperature'
       };
 
-      const normaliseHeader = (header: string) =>
-        header
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9_]/g, '');
-
-      const headers = rawHeaders.map(normaliseHeader);
-
-      const parsedData: BuildingData[] = lines.slice(1).map((line) => {
+      const parsedData: BuildingData[] = lines.slice(1).filter(line => line.trim()).map(line => {
         const values = line.split(',');
-        const entry: Partial<BuildingData> = {};
+        const entry: any = {
+          timestamp: new Date().toISOString(),
+          energy: 0,
+          water: 0,
+          waste: 0,
+          carbon: 0,
+          occupancy: 0,
+          temperature: 0
+        };
 
         headers.forEach((header, index) => {
-          const mappedKey = headerMap[header];
-          if (!mappedKey) return;
+          const val = values[index]?.trim();
+          if (val === undefined) return;
 
-          const rawVal = values[index]?.trim();
-          if (!rawVal) return;
-
-          const numericVal = Number(rawVal);
-          (entry as any)[mappedKey] = isNaN(numericVal) ? rawVal : numericVal;
+          // Find matching key in BuildingData
+          for (const [pattern, targetKey] of Object.entries(keyMap)) {
+            if (header.includes(pattern)) {
+              entry[targetKey] = targetKey === 'timestamp' ? val : (isNaN(Number(val)) ? 0 : Number(val));
+              break;
+            }
+          }
         });
-
-        if (!entry.timestamp) {
-          entry.timestamp = new Date().toISOString();
-        }
-
-        if (typeof entry.carbon !== 'number' && typeof entry.energy === 'number') {
-          entry.carbon = Math.round(entry.energy * 0.7);
-        }
-
-        if (typeof entry.temperature !== 'number') {
-          entry.temperature = 22;
-        }
-
-        if (typeof entry.occupancy !== 'number') {
-          entry.occupancy = 0;
-        }
-
         return entry as BuildingData;
-      }).filter((row) => row && typeof row.energy !== 'undefined');
+      });
 
       if (parsedData.length > 0) {
         setData(parsedData);
@@ -181,6 +154,11 @@ export default function App() {
   };
 
   const handleExportReport = () => {
+    if (!isAuthenticated) {
+      setShowAuthPrompt(true);
+      return;
+    }
+
     const reportContent = `
 # ECOSPHERE AI - Sustainability Report
 Generated on: ${new Date().toLocaleString()}
@@ -222,8 +200,25 @@ EcoSphere AI v4.0.2 Stable Build
     setView('dashboard');
   };
 
+  const handleAuthSuccess = () => {
+    localStorage.setItem('ecosphere_session', 'active');
+    setIsAuthenticated(true);
+    setShowAuthPrompt(false);
+    setView('dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('ecosphere_session');
+    setIsAuthenticated(false);
+    setView('landing');
+  };
+
   if (view === 'landing') {
-    return <LandingPage onLaunch={handleLaunch} />;
+    return <LandingPage onLaunch={handleLaunch} onLogin={() => setView('auth')} />;
+  }
+
+  if (view === 'auth') {
+    return <AuthPage onAuthSuccess={handleAuthSuccess} onBack={() => setView('landing')} />;
   }
 
   if (loading && data.length === 0) {
@@ -245,6 +240,60 @@ EcoSphere AI v4.0.2 Stable Build
 
   return (
     <div className="min-h-screen bg-[#030303] text-white font-sans selection:bg-emerald-500/30 overflow-x-hidden">
+      {/* Login Prompt Modal */}
+      <AnimatePresence>
+        {showAuthPrompt && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAuthPrompt(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md glass rounded-[3rem] p-10 border border-white/10 shadow-[0_0_100px_rgba(16,185,129,0.1)] text-center space-y-8"
+            >
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto border border-emerald-500/20">
+                <Shield className="text-emerald-500" size={32} />
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="text-2xl font-display font-bold tracking-tight text-white">Authentication Required</h3>
+                <p className="text-white/40 text-xs leading-relaxed font-medium">
+                  To download sustainability reports and save institutional history, please sign in to your EcoSphere account.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowAuthPrompt(false);
+                    setView('auth');
+                  }}
+                  className="w-full py-4 bg-emerald-500 text-black font-mono font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-500"
+                >
+                  Login / Sign Up
+                </button>
+                <button
+                  onClick={() => setShowAuthPrompt(false)}
+                  className="w-full py-4 bg-white/[0.02] border border-white/[0.05] text-white/20 font-mono font-black text-[9px] uppercase tracking-[0.4em] rounded-2xl hover:bg-white/[0.05] hover:text-white/40 transition-all duration-500"
+                >
+                  Continue as Guest
+                </button>
+              </div>
+
+              <div className="pt-4 border-t border-white/[0.03]">
+                <p className="text-[9px] text-white/10 font-mono font-bold uppercase tracking-widest">Secure Sustainability Intelligence</p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Background Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-emerald-500/[0.05] blur-[160px] rounded-full animate-pulse-glow" />
@@ -272,6 +321,23 @@ EcoSphere AI v4.0.2 Stable Build
         </div>
 
         <div className="flex items-center gap-10">
+          {isAuthenticated ? (
+            <button
+              onClick={() => {}} // Placeholder for history view
+              className="hidden xl:flex items-center gap-3 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-500 group"
+            >
+              <History size={14} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-mono font-black text-emerald-500 uppercase tracking-[0.2em]">Institutional History</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowAuthPrompt(true)}
+              className="hidden xl:flex items-center gap-3 px-5 py-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all duration-500 group"
+            >
+              <History size={14} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-mono font-black text-emerald-500 uppercase tracking-[0.2em]">Login to Save History</span>
+            </button>
+          )}
           <div className="hidden lg:flex items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-2">
             {(['Campus', 'Office', 'Residential', 'Hospital'] as BuildingType[]).map((type) => (
               <button
@@ -309,16 +375,23 @@ EcoSphere AI v4.0.2 Stable Build
             >
               <FileDown size={18} className="text-white/20 group-hover:text-blue-400 transition-all duration-500" />
             </button>
-            <button 
-              onClick={() => {
-                const simulatedData = fetchBuildingData();
-                fetchInsights(simulatedData);
-              }}
-              className="w-12 h-12 flex items-center justify-center bg-white/[0.02] border border-white/[0.05] rounded-2xl hover:bg-white/[0.08] hover:border-emerald-500/30 transition-all duration-500 group"
-              title="Refresh Data"
-            >
-              <RefreshCw size={18} className={cn("transition-all duration-500", loading ? 'animate-spin text-emerald-500' : 'text-white/20 group-hover:text-emerald-400')} />
-            </button>
+            {isAuthenticated ? (
+              <button 
+                onClick={handleLogout}
+                className="w-12 h-12 flex items-center justify-center bg-white/[0.02] border border-white/[0.05] rounded-2xl hover:bg-rose-500/10 hover:border-rose-500/30 transition-all duration-500 group"
+                title="Logout"
+              >
+                <LogOut size={18} className="text-white/20 group-hover:text-rose-400 transition-all duration-500" />
+              </button>
+            ) : (
+              <button 
+                onClick={() => setView('auth')}
+                className="w-12 h-12 flex items-center justify-center bg-white/[0.02] border border-white/[0.05] rounded-2xl hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all duration-500 group"
+                title="Login"
+              >
+                <LogIn size={18} className="text-white/20 group-hover:text-emerald-400 transition-all duration-500" />
+              </button>
+            )}
           </div>
         </div>
       </nav>
