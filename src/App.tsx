@@ -142,8 +142,11 @@ export default function App() {
     const savedBuildingType = localStorage.getItem('buildingTypeContext');
     if (savedInstitution) setInstitutionName(savedInstitution);
     if (savedBuildingType) setBuildingType(savedBuildingType as BuildingType);
-    // Always start on landing page; let user choose action
-    setView('landing');
+    
+    // Only set to landing if no institution context exists
+    if (!savedInstitution || !savedBuildingType) {
+      setView('landing');
+    }
   }, []);
 
   useEffect(() => {
