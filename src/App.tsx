@@ -126,9 +126,8 @@ export default function App() {
     const savedBuildingType = localStorage.getItem('buildingTypeContext');
     if (savedInstitution) setInstitutionName(savedInstitution);
     if (savedBuildingType) setBuildingType(savedBuildingType as BuildingType);
-    if (!savedInstitution || !savedBuildingType) {
-      setView('landing');
-    }
+    // Always start on landing page; let user choose action
+    setView('landing');
   }, []);
 
   useEffect(() => {
@@ -136,13 +135,7 @@ export default function App() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        const hasInstitution = !!localStorage.getItem('institutionContext');
-        if (hasInstitution) {
-          setView('dashboard');
-        } else {
-          setView('landing');
-        }
-        fetchReportHistory();
+        // Do not auto-navigate; let user choose from landing page
       }
     };
     checkSession();
@@ -150,13 +143,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        const hasInstitution = !!localStorage.getItem('institutionContext');
-        if (hasInstitution) {
-          setView('dashboard');
-        } else {
-          setView('landing');
-        }
-        fetchReportHistory();
+        // Do not auto-navigate; let user choose from landing page
       } else {
         setIsAuthenticated(false);
         setView('landing');
