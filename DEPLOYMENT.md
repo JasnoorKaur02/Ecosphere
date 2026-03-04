@@ -4,8 +4,8 @@
 Add these to your deployment platform (Vercel, Netlify, etc.):
 
 ### Supabase Configuration
-- `VITE_SUPABASE_URL`: Your Supabase project URL
-- `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+- `VITE_SUPABASE_URL`: Your Supabase project URL (e.g., https://your-project.supabase.co)
+- `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key (public key)
 
 ### Gemini AI
 - `GEMINI_API_KEY`: Your Google Gemini API key
@@ -19,6 +19,27 @@ Add these to your deployment platform (Vercel, Netlify, etc.):
 - [ ] Verify all assets are in `dist/assets/`
 
 ## Common Issues & Solutions
+
+### Authentication "Fail to Fetch" Error
+1. **Missing Environment Variables**
+   - Ensure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set
+   - Check deployment platform environment variables section
+   - Verify keys are correct (no extra spaces or quotes)
+
+2. **CORS Issues**
+   - In Supabase Dashboard → Settings → API
+   - Add your deployed URL to "Additional Redirect URLs"
+   - Format: `https://your-app.vercel.app/**`
+
+3. **Supabase Project Issues**
+   - Verify Supabase project is active (not paused)
+   - Check if anon key has correct permissions
+   - Ensure RLS policies allow access
+
+4. **Network Issues**
+   - Check if deployment platform blocks external requests
+   - Verify firewall allows Supabase API calls
+   - Test Supabase URL is accessible
 
 ### Blank Screen After Deployment
 1. **Missing Environment Variables**
@@ -40,8 +61,12 @@ Add these to your deployment platform (Vercel, Netlify, etc.):
 ### Debugging Steps
 1. Open browser dev tools on deployed site
 2. Check Console tab for JavaScript errors
-3. Check Network tab for failed asset requests
-4. Verify environment variables are loaded
+3. Check Network tab for failed requests (look for Supabase API calls)
+4. Verify environment variables are loaded:
+   ```javascript
+   console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
+   console.log('Supabase Key exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
+   ```
 
 ## Performance Optimization
 - [ ] Enable gzip compression on server
@@ -53,3 +78,26 @@ Add these to your deployment platform (Vercel, Netlify, etc.):
 - [ ] Supabase RLS policies are configured
 - [ ] API keys are properly secured
 - [ ] HTTPS is enabled
+
+## Supabase Configuration Checklist
+1. **Project Settings**
+   - [ ] Project is active (not paused)
+   - [ ] API settings allow anonymous access
+   - [ ] CORS settings include your domain
+
+2. **Authentication Settings**
+   - [ ] Enable email/password auth
+   - [ ] Configure site URL in Auth settings
+   - [ ] Add redirect URLs for login/signup
+
+3. **Database Setup**
+   - [ ] `reports` table exists with correct schema
+   - [ ] RLS policies allow authenticated users to read/write
+   - [ ] Test database connection
+
+## Testing Authentication
+1. Open browser dev tools
+2. Go to Network tab
+3. Try to sign up/login
+4. Check for requests to `https://your-project.supabase.co/auth/v1/`
+5. Verify status codes (200 for success, not 401/403)

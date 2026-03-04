@@ -148,10 +148,24 @@ export default function App() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsAuthenticated(true);
-        // Do not auto-navigate; let user choose from landing page
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Session check error:', error);
+          return;
+        }
+        if (session) {
+          setIsAuthenticated(true);
+          const hasInstitution = !!localStorage.getItem('institutionContext');
+          if (hasInstitution) {
+            setView('dashboard');
+          } else {
+            setView('landing');
+          }
+          fetchReportHistory();
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
       }
     };
     checkSession();
@@ -159,7 +173,13 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        // Do not auto-navigate; let user choose from landing page
+        const hasInstitution = !!localStorage.getItem('institutionContext');
+        if (hasInstitution) {
+          setView('dashboard');
+        } else {
+          setView('landing');
+        }
+        fetchReportHistory();
       } else {
         setIsAuthenticated(false);
         setView('landing');
@@ -308,13 +328,22 @@ EcoSphere AI v4.0.2 Stable Build
   };
 
   const fetchReportHistory = async () => {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (!error) {
-      setReportHistory(data);
+      if (error) {
+        console.error('Error fetching report history:', error);
+        return;
+      }
+
+      if (data) {
+        setReportHistory(data);
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching report history:', error);
     }
   };
 
