@@ -53,6 +53,7 @@ export default function App() {
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [sustainabilityScore, setSustainabilityScore] = useState<number>(0);
   const [sustainabilityRating, setSustainabilityRating] = useState<string>('');
+  const [appError, setAppError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const fetchBuildingData = () => {
@@ -120,11 +121,16 @@ export default function App() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const name = user.user_metadata?.full_name || user.email || 'Guest Mode';
-        setUserName(name);
-      } else {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const name = user.user_metadata?.full_name || user.email || 'Guest Mode';
+          setUserName(name);
+        } else {
+          setUserName('Guest Mode');
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
         setUserName('Guest Mode');
       }
     };
