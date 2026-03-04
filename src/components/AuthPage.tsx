@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Leaf, Mail, Lock, User, ArrowRight, Github, Chrome, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -21,15 +22,31 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
     setIsLoading(true);
     setError(null);
 
-    // Simulate API call
-    setTimeout(() => {
-      if (email && password) {
+    try {
+      if (mode === 'login') {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
         onAuthSuccess();
       } else {
-        setError('Please fill in all required fields.');
-        setIsLoading(false);
+        if (!name.trim()) throw new Error('Full name is required.');
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(password)) {
+          throw new Error('Password must be at least 8 characters and include uppercase, number, and special character.');
+        }
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name } }
+        });
+        if (error) throw error;
+        setMode('login');
+        setError('Account created successfully. Please login.');
       }
-    }, 1500);
+    } catch (err: any) {
+      setError(err?.message || 'Authentication failed.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -143,10 +160,34 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="•••••••"
                   className="w-full bg-white/[0.02] border border-white/[0.05] rounded-2xl pl-14 pr-6 py-4 text-white placeholder:text-white/10 focus:outline-none focus:border-emerald-500/50 focus:bg-white/[0.04] transition-all"
                 />
               </div>
+              {mode === 'login' && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!email.trim()) {
+                        setError('Please enter your email first.');
+                        return;
+                      }
+                      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: window.location.origin
+                      });
+                      if (error) {
+                        setError(error.message);
+                      } else {
+                        setError('Password reset email sent. Please check your inbox.');
+                      }
+                    }}
+                    className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer transition-all duration-300"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
             </div>
 
             {error && (

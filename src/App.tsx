@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AuthPage } from './components/AuthPage';
 import { 
   Zap, 
   Droplets, 
@@ -27,8 +26,10 @@ import { generateBuildingData, generateForecast } from './services/simulationSer
 import { getSustainabilityInsights } from './services/geminiService';
 import { BuildingData, BuildingType, OptimizationResult } from './types';
 import { cn } from './lib/utils';
+import { supabase } from './lib/supabase';
 
 import { LandingPage } from './components/LandingPage';
+import { AuthPage } from './components/AuthPage';
 
 export default function App() {
   const [view, setView] = useState<'landing' | 'dashboard' | 'auth'>('landing');
@@ -45,6 +46,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [userName, setUserName] = useState('Guest Mode');
+  const [reportHistory, setReportHistory] = useState<any[]>([]);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const fetchBuildingData = () => {
@@ -58,9 +63,38 @@ export default function App() {
 
   const fetchInsights = async (currentData: BuildingData[]) => {
     setInsightsLoading(true);
-    const aiInsights = await getSustainabilityInsights(currentData, buildingType, activeMetric);
-    setInsights(aiInsights);
-    setInsightsLoading(false);
+    try {
+      const aiInsights = await getSustainabilityInsights(currentData, buildingType, activeMetric);
+      setInsights(aiInsights);
+      console.log("Generated AI insights:", aiInsights);
+
+      // Save report to Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log("Current authenticated user:", user);
+      console.log("Institution name:", institutionName);
+      console.log("Building type:", buildingType);
+      if (user) {
+        const { data, error } = await supabase.from('reports').insert({
+          user_id: user.id,
+          institution: institutionName,
+          building_type: buildingType,
+          report_data: {
+            metric: activeMetric,
+            inputData: currentData,
+            insights: aiInsights
+          }
+        });
+        console.log("Insert result:", data);
+        console.log("Insert error:", error);
+        if (error) {
+          console.error('Failed to save report to Supabase:', error);
+        }
+      }
+    } catch (err) {
+      console.error('Error in fetchInsights:', err);
+    } finally {
+      setInsightsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -73,6 +107,29 @@ export default function App() {
       fetchInsights(data);
     }
   }, [activeMetric]);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const name = user.user_metadata?.full_name || user.email || 'Guest Mode';
+        setUserName(name);
+      } else {
+        setUserName('Guest Mode');
+      }
+    };
+    fetchUser();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const savedInstitution = localStorage.getItem('institutionContext');
+    const savedBuildingType = localStorage.getItem('buildingTypeContext');
+    if (savedInstitution) setInstitutionName(savedInstitution);
+    if (savedBuildingType) setBuildingType(savedBuildingType as BuildingType);
+    if (!savedInstitution || !savedBuildingType) {
+      setView('landing');
+    }
+  }, []);
 
   const current = data[data.length - 1] || { 
     energy: 0, 
@@ -194,9 +251,22 @@ EcoSphere AI v4.0.2 Stable Build
     URL.revokeObjectURL(url);
   };
 
+  const fetchReportHistory = async () => {
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error) {
+      setReportHistory(data);
+    }
+  };
+
   const handleLaunch = (name: string, type: BuildingType) => {
     setInstitutionName(name);
     setBuildingType(type);
+    localStorage.setItem('institutionContext', name);
+    localStorage.setItem('buildingTypeContext', type);
     setView('dashboard');
   };
 
@@ -204,7 +274,13 @@ EcoSphere AI v4.0.2 Stable Build
     localStorage.setItem('ecosphere_session', 'active');
     setIsAuthenticated(true);
     setShowAuthPrompt(false);
-    setView('dashboard');
+    const hasInstitution = !!localStorage.getItem('institutionContext');
+    if (hasInstitution) {
+      setView('dashboard');
+    } else {
+      setView('landing');
+    }
+    fetchReportHistory();
   };
 
   const handleLogout = () => {
@@ -323,11 +399,11 @@ EcoSphere AI v4.0.2 Stable Build
         <div className="flex items-center gap-10">
           {isAuthenticated ? (
             <button
-              onClick={() => {}} // Placeholder for history view
+              onClick={() => setShowHistoryPanel(!showHistoryPanel)}
               className="hidden xl:flex items-center gap-3 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-500 group"
             >
               <History size={14} className="text-emerald-500 group-hover:scale-110 transition-transform" />
-              <span className="text-[9px] font-mono font-black text-emerald-500 uppercase tracking-[0.2em]">Institutional History</span>
+              <span className="text-[9px] font-mono font-black text-emerald-500 uppercase tracking-[0.2em]">{userName}</span>
             </button>
           ) : (
             <button
@@ -627,6 +703,130 @@ EcoSphere AI v4.0.2 Stable Build
           </div>
         </section>
       </main>
+
+      {/* Report History Panel */}
+      <AnimatePresence>
+        {showHistoryPanel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowHistoryPanel(false)}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-6"
+          >
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-4xl max-h-[80vh] overflow-y-auto glass rounded-[3rem] p-10 border border-white/10 shadow-[0_0_100px_rgba(16,185,129,0.1)]"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-display font-bold tracking-tight text-white">Institutional History</h3>
+                <button
+                  onClick={() => setShowHistoryPanel(false)}
+                  className="text-white/20 hover:text-white/40 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {reportHistory.map((report: any) => (
+                  <div key={report.id} className="p-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="text-lg font-display font-bold text-white">{report.institution}</h4>
+                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest">{report.building_type}</p>
+                        <p className="text-[10px] font-mono text-white/20">
+                          {new Date(report.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedReport(report)}
+                        className="text-[9px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors"
+                      >
+                        View Full Report
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest mb-1">Generated</p>
+                      <div className="text-sm text-white/60 leading-relaxed">
+                        {Array.isArray(report.report_data?.insights) ? (
+                          <ul className="list-disc list-inside space-y-1 ml-4">
+                            {report.report_data.insights.map((insight: any, idx: number) => (
+                              <li key={idx} className="text-white/80">
+                                <span className="font-semibold">{insight.title}</span>: {insight.description}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-white/40">No insights available.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Full Report Modal */}
+      <AnimatePresence>
+        {selectedReport && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedReport(null)}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-6"
+          >
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-4xl max-h-[80vh] overflow-y-auto glass rounded-[3rem] p-10 border border-white/10 shadow-[0_0_100px_rgba(16,185,129,0.1)]"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-display font-bold tracking-tight text-white">Full Report</h3>
+                <button
+                  onClick={() => setSelectedReport(null)}
+                  className="text-white/20 hover:text-white/40 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-display font-bold text-white mb-2">
+                  {selectedReport.institution} — {selectedReport.building_type}
+                </h4>
+                <p className="text-[10px] font-mono text-white/20">
+                  {new Date(selectedReport.created_at).toLocaleString()}
+                </p>
+              </div>
+
+              <div>
+                <h5 className="text-md font-display font-bold text-emerald-400 mb-3">Generated Insights</h5>
+                {Array.isArray(selectedReport.report_data?.insights) ? (
+                  <ul className="list-disc list-inside space-y-2 ml-4">
+                    {selectedReport.report_data.insights.map((insight: any, idx: number) => (
+                      <li key={idx} className="text-white/80">
+                        <span className="font-semibold">{insight.title}</span>: {insight.description}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-white/40">No insights available.</p>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <footer className="relative z-10 px-16 py-32 mt-40 border-t border-white/[0.03] bg-gradient-to-b from-transparent to-black/40">
