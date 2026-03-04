@@ -24,7 +24,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ 
+          email, 
+          password
+        });
         if (error) throw error;
         onAuthSuccess();
       } else {
@@ -36,7 +39,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name } }
+          options: { 
+            data: { full_name: name },
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
         });
         if (error) throw error;
         setMode('login');

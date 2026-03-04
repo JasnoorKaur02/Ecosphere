@@ -101,3 +101,23 @@ Add these to your deployment platform (Vercel, Netlify, etc.):
 3. Try to sign up/login
 4. Check for requests to `https://your-project.supabase.co/auth/v1/`
 5. Verify status codes (200 for success, not 401/403)
+
+## Email Confirmation Issues
+1. **Check Spam Folder**
+   - Look for Supabase confirmation email in spam/junk folders
+   - Add `noreply@supabase.co` to contacts
+
+2. **Verify Email Settings**
+   - In Supabase Dashboard → Authentication → Email Templates
+   - Check if confirmation emails are enabled
+   - Verify email template content is correct
+
+3. **Test Email Flow**
+   - Try signing up with a test email
+   - Check browser console for any errors
+   - Verify the confirmation link works
+
+4. **Common Solutions**
+   - Ensure `SITE_URL` in Supabase settings matches your deployed URL
+   - Check if email provider blocks Supabase emails
+   - Try a different email provider for testing
