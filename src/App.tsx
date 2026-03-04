@@ -156,13 +156,7 @@ export default function App() {
         }
         if (session) {
           setIsAuthenticated(true);
-          const hasInstitution = !!localStorage.getItem('institutionContext');
-          if (hasInstitution) {
-            setView('dashboard');
-          } else {
-            setView('landing');
-          }
-          fetchReportHistory();
+          // Don't auto-navigate, let user stay on current view
         }
       } catch (error) {
         console.error('Error checking session:', error);
@@ -173,13 +167,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        const hasInstitution = !!localStorage.getItem('institutionContext');
-        if (hasInstitution) {
-          setView('dashboard');
-        } else {
-          setView('landing');
-        }
-        fetchReportHistory();
+        // Don't auto-navigate, let user stay on current view
       } else {
         setIsAuthenticated(false);
         setView('landing');
@@ -397,12 +385,7 @@ EcoSphere AI v4.0.2 Stable Build
     localStorage.setItem('ecosphere_session', 'active');
     setIsAuthenticated(true);
     setShowAuthPrompt(false);
-    const hasInstitution = !!localStorage.getItem('institutionContext');
-    if (hasInstitution) {
-      setView('dashboard');
-    } else {
-      setView('landing');
-    }
+    // Don't auto-navigate, let user stay on current view
     fetchReportHistory();
   };
 
