@@ -27,6 +27,7 @@ import { getSustainabilityInsights } from './services/geminiService';
 import { BuildingData, BuildingType, OptimizationResult } from './types';
 import { cn } from './lib/utils';
 import { supabase } from './lib/supabase';
+import jsPDF from 'jspdf';
 
 import { LandingPage } from './components/LandingPage';
 import { AuthPage } from './components/AuthPage';
@@ -50,6 +51,8 @@ export default function App() {
   const [reportHistory, setReportHistory] = useState<any[]>([]);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [sustainabilityScore, setSustainabilityScore] = useState<number>(0);
+  const [sustainabilityRating, setSustainabilityRating] = useState<string>('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const fetchBuildingData = () => {
@@ -68,6 +71,11 @@ export default function App() {
       setInsights(aiInsights);
       console.log("Generated AI insights:", aiInsights);
 
+      const score = calculateSustainabilityScore(currentData, activeMetric);
+      const rating = getRating(score);
+      setSustainabilityScore(score);
+      setSustainabilityRating(rating);
+
       // Save report to Supabase
       const { data: { user } } = await supabase.auth.getUser();
       console.log("Current authenticated user:", user);
@@ -81,7 +89,9 @@ export default function App() {
           report_data: {
             metric: activeMetric,
             inputData: currentData,
-            insights: aiInsights
+            insights: aiInsights,
+            score,
+            rating
           }
         });
         console.log("Insert result:", data);
@@ -273,6 +283,24 @@ EcoSphere AI v4.0.2 Stable Build
     URL.revokeObjectURL(url);
   };
 
+  const calculateSustainabilityScore = (data: BuildingData[], metric: string) => {
+    const latest = data[data.length - 1] || { energy: 0, water: 0, waste: 0, carbon: 0 };
+    const energyPoints = Math.min(30, Math.max(0, 30 - (latest.energy / 10)));
+    const waterPoints = Math.min(20, Math.max(0, 20 - (latest.water / 50)));
+    const wastePoints = Math.min(20, Math.max(0, 20 - (latest.waste / 2)));
+    const carbonPoints = Math.min(30, Math.max(0, 30 - (latest.carbon / 5)));
+    const total = energyPoints + waterPoints + wastePoints + carbonPoints;
+    return Math.round(total);
+  };
+
+  const getRating = (score: number) => {
+    if (score >= 90) return 'A';
+    if (score >= 80) return 'B';
+    if (score >= 70) return 'C';
+    if (score >= 60) return 'D';
+    return 'F';
+  };
+
   const fetchReportHistory = async () => {
     const { data, error } = await supabase
       .from('reports')
@@ -282,6 +310,44 @@ EcoSphere AI v4.0.2 Stable Build
     if (!error) {
       setReportHistory(data);
     }
+  };
+
+  const downloadReportPDF = (report?: any) => {
+    const doc = new jsPDF();
+    doc.setFontSize(12);
+    doc.setFont('helvetica');
+
+    const title = 'Ecosphere AI Sustainability Report';
+    const institution = report?.institution || institutionName;
+    const building = report?.building_type || buildingType;
+    const date = report ? new Date(report.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+    const score = report?.report_data?.score || sustainabilityScore;
+    const rating = report?.report_data?.rating || sustainabilityRating;
+    const reportInsights = report?.report_data?.insights || insights;
+
+    doc.setFontSize(20);
+    doc.text(title, 20, 20);
+    doc.setFontSize(12);
+    doc.text(`Institution: ${institution}`, 20, 40);
+    doc.text(`Building Type: ${building}`, 20, 50);
+    doc.text(`Generated: ${date}`, 20, 60);
+    doc.text(`Sustainability Score: ${score}/100`, 20, 70);
+    doc.text(`Rating: ${rating}`, 20, 80);
+
+    doc.setFontSize(14);
+    doc.text('AI Insights:', 20, 100);
+    let yPosition = 110;
+    reportInsights.forEach((insight: any, idx: number) => {
+      const lines = doc.splitTextToSize(`${idx + 1}. ${insight.title}: ${insight.description}`, 170);
+      lines.forEach((line) => {
+        doc.text(line, 20, yPosition);
+        yPosition += 6;
+      });
+      yPosition += 8;
+    });
+
+    const fileName = `ecosphere-report-${institution?.replace(/\s+/g, '-')}-${date}.pdf`;
+    doc.save(fileName);
   };
 
   const handleLaunch = (name: string, type: BuildingType) => {
@@ -473,6 +539,13 @@ EcoSphere AI v4.0.2 Stable Build
             >
               <FileDown size={18} className="text-white/20 group-hover:text-blue-400 transition-all duration-500" />
             </button>
+            <button
+              onClick={() => downloadReportPDF()}
+              className="w-12 h-12 flex items-center justify-center bg-white/[0.02] border border-white/[0.05] rounded-2xl hover:bg-white/[0.08] hover:border-emerald-500/30 transition-all duration-500 group"
+              title="Download Report as PDF"
+            >
+              <FileDown size={18} className="text-white/20 group-hover:text-emerald-400 transition-all duration-500" />
+            </button>
             {isAuthenticated ? (
               <button 
                 onClick={handleLogout}
@@ -499,7 +572,7 @@ EcoSphere AI v4.0.2 Stable Build
         {/* Section 1: Hero Score */}
         <section className="flex flex-col items-center">
           <div className="w-full max-w-5xl">
-            <SustainabilityScore score={baseScore} predictedScore={predictedScore} />
+            <SustainabilityScore score={sustainabilityScore} predictedScore={predictedScore} rating={sustainabilityRating} />
           </div>
         </section>
 
@@ -764,12 +837,20 @@ EcoSphere AI v4.0.2 Stable Build
                           {new Date(report.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <button
-                        onClick={() => setSelectedReport(report)}
-                        className="text-[9px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors"
-                      >
-                        View Full Report
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setSelectedReport(report)}
+                          className="text-[9px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          View Full Report
+                        </button>
+                        <button
+                          onClick={() => downloadReportPDF(report)}
+                          className="text-[9px] font-mono text-white/20 hover:text-white/40 transition-colors"
+                        >
+                          Download PDF
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest mb-1">Generated</p>
@@ -829,6 +910,24 @@ EcoSphere AI v4.0.2 Stable Build
                 <p className="text-[10px] font-mono text-white/20">
                   {new Date(selectedReport.created_at).toLocaleString()}
                 </p>
+                <div className="flex items-center gap-4 mb-3">
+                  <div>
+                    <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Sustainability Score</p>
+                    <p className="text-3xl font-mono font-bold text-white">{selectedReport.report_data?.score || sustainabilityScore}/100</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Rating</p>
+                    <span className={cn(
+                      "text-2xl font-display font-bold uppercase tracking-widest px-3 py-1 rounded-full",
+                      selectedReport.report_data?.rating === 'A' && "text-emerald-500 bg-emerald-500/20",
+                      selectedReport.report_data?.rating === 'B' && "text-yellow-500 bg-yellow-500/20",
+                      selectedReport.report_data?.rating === 'C' && "text-orange-500 bg-orange-500/20",
+                      "text-rose-500 bg-rose-500/20"
+                    )}>
+                      {selectedReport.report_data?.rating || sustainabilityRating}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div>
