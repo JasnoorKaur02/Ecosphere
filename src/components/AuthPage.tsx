@@ -36,7 +36,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
         if (!passwordRegex.test(password)) {
           throw new Error('Password must be at least 8 characters and include uppercase, number, and special character.');
         }
-        const { error } = await supabase.auth.signUp({
+        const result = await supabase.auth.signUp({
           email,
           password,
           options: { 
@@ -44,9 +44,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
             emailRedirectTo: `${window.location.origin}/auth/callback`
           }
         });
-        if (error) throw error;
+        console.log('Signup result:', result);
+        if (result.error) {
+          console.error('Signup error:', result.error);
+          throw result.error;
+        }
         setMode('login');
-        setError('Account created successfully. Please login.');
+        setError('Account created! Please check your email for confirmation link.');
       }
     } catch (err: any) {
       setError(err?.message || 'Authentication failed.');

@@ -87,13 +87,22 @@ Add these to your deployment platform (Vercel, Netlify, etc.):
 
 2. **Authentication Settings**
    - [ ] Enable email/password auth
-   - [ ] Configure site URL in Auth settings
+   - [ ] Configure SITE URL in Auth settings (must match deployed URL)
    - [ ] Add redirect URLs for login/signup
+   - [ ] Enable email confirmations
+   - [ ] Check "Enable email confirmations" toggle is ON
+   - [ ] Verify email templates are active
 
 3. **Database Setup**
    - [ ] `reports` table exists with correct schema
    - [ ] RLS policies allow authenticated users to read/write
    - [ ] Test database connection
+
+4. **Email Configuration CRITICAL**
+   - [ ] Go to Authentication → Email Templates
+   - [ ] Verify "Confirm signup" template is enabled
+   - [ ] Check sender email is configured
+   - [ ] Test email delivery with "Send test email"
 
 ## Testing Authentication
 1. Open browser dev tools
