@@ -131,6 +131,41 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsAuthenticated(true);
+        const hasInstitution = !!localStorage.getItem('institutionContext');
+        if (hasInstitution) {
+          setView('dashboard');
+        } else {
+          setView('landing');
+        }
+        fetchReportHistory();
+      }
+    };
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsAuthenticated(true);
+        const hasInstitution = !!localStorage.getItem('institutionContext');
+        if (hasInstitution) {
+          setView('dashboard');
+        } else {
+          setView('landing');
+        }
+        fetchReportHistory();
+      } else {
+        setIsAuthenticated(false);
+        setView('landing');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const current = data[data.length - 1] || { 
     energy: 0, 
     water: 0, 
