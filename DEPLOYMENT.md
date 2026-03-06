@@ -1,5 +1,26 @@
 # Deployment Checklist
 
+## Deployment Steps (CRITICAL)
+1. **Push Changes to GitHub**
+   - All changes are now pushed to main branch
+   - GitHub repository is up-to-date
+
+2. **Trigger New Deployment**
+   - **If using Vercel**: 
+     - Go to vercel.com dashboard
+     - Find your project
+     - Click "Redeploy" or "Deployments" → "Redeploy"
+   - **If using Netlify**:
+     - Go to netlify.com dashboard
+     - Find your site
+     - Click "Deploy" → "Trigger deploy"
+   - **If using other platform**: Check platform-specific redeploy options
+
+3. **Verify Deployment**
+   - Wait for deployment to complete (2-5 minutes)
+   - Check deployment logs for any errors
+   - Test the deployed URL
+
 ## Environment Variables (Required)
 Add these to your deployment platform (Vercel, Netlify, etc.):
 
