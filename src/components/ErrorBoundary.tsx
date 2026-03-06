@@ -20,7 +20,11 @@ export function ErrorBoundary({ children }: ErrorBoundaryProps) {
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.error('Unhandled promise rejection:', event.reason);
-      setState({ hasError: true, error: new Error(String(event.reason)) });
+      // Don't set error state for all rejections, just log them
+      // Only set error state if it's a critical error
+      if (event.reason && event.reason instanceof Error && event.reason.message.includes('Lock broken')) {
+        setState({ hasError: true, error: new Error(event.reason.message) });
+      }
     };
 
     window.addEventListener('error', handleError);

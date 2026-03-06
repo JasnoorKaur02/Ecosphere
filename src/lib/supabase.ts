@@ -12,5 +12,10 @@ export const supabase = createClient(supabaseUrl || 'https://placeholder.supabas
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'ecosphere-dashboard'
+    }
   }
 })
