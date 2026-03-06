@@ -388,7 +388,14 @@ EcoSphere AI v4.0.2 Stable Build
     localStorage.setItem('ecosphere_session', 'active');
     setIsAuthenticated(true);
     setShowAuthPrompt(false);
-    // Don't auto-navigate, let user stay on current view
+    // Navigate to dashboard if user has institution context
+    const hasInstitution = !!localStorage.getItem('institutionContext');
+    const hasBuildingType = !!localStorage.getItem('buildingTypeContext');
+    if (hasInstitution && hasBuildingType) {
+      setView('dashboard');
+    } else {
+      setView('landing');
+    }
     fetchReportHistory();
   };
 
