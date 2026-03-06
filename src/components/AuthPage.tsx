@@ -40,8 +40,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
           email,
           password,
           options: { 
-            data: { full_name: name },
-            emailRedirectTo: `${window.location.origin}/auth/callback`
+            data: { full_name: name }
           }
         });
         console.log('Signup result:', result);
@@ -49,8 +48,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onBack }) => 
           console.error('Signup error:', result.error);
           throw result.error;
         }
-        setMode('login');
-        setError('Account created! Please check your email for confirmation link.');
+        // Auto-login after signup since email confirmation might not work
+        if (result.data.user && !result.data.user.email_confirmed_at) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({ 
+            email, 
+            password 
+          });
+          if (signInError) {
+            console.error('Auto-login failed:', signInError);
+            setMode('login');
+            setError('Account created! Please login manually.');
+          } else {
+            onAuthSuccess();
+          }
+        } else {
+          onAuthSuccess();
+        }
       }
     } catch (err: any) {
       setError(err?.message || 'Authentication failed.');

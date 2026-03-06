@@ -89,9 +89,10 @@ Add these to your deployment platform (Vercel, Netlify, etc.):
    - [ ] Enable email/password auth
    - [ ] Configure SITE URL in Auth settings (must match deployed URL)
    - [ ] Add redirect URLs for login/signup
-   - [ ] Enable email confirmations
-   - [ ] Check "Enable email confirmations" toggle is ON
-   - [ ] Verify email templates are active
+   - [ ] **DISABLE email confirmations (temporary fix)**
+   - [ ] Go to Authentication → Settings → Email confirmations
+   - [ ] Turn OFF "Enable email confirmations" toggle
+   - [ ] This allows immediate login after signup
 
 3. **Database Setup**
    - [ ] `reports` table exists with correct schema
